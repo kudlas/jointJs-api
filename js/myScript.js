@@ -31,7 +31,7 @@ function Shaper()
     this.defaultRect = {
       position: { x: 100, y: 30 },
       size: { width: 100, height: 30 },
-      background: 'lightGray',
+      background: 'blue',
       text: 'muj box',
     }    
     
@@ -41,7 +41,7 @@ function Shaper()
     
     // selecting variables
     this.selectedIndex = '';
-    this.selectedColor = 'pink';
+    this.selectedColor = 'lightGray';
     this.inactiveColor = 'gray';
     
     this.createRect = function (name, textA) {
@@ -53,7 +53,7 @@ function Shaper()
         
         // vytvarim box
         item = new joint.shapes.basic.Rect({
-        data: {name: name},
+        data: {name: name, defaultColor: this.defaultRect.background},
         position: this.defaultRect.position,
         size: this.defaultRect.size,
         attrs: { rect: { fill: this.defaultRect.background, 'stroke-width': 2, stroke: 'black' }, text: { text: txt, fill: 'white' } }  });
@@ -89,11 +89,16 @@ function Shaper()
     
       if(typeof rect != 'undefined' )
       {
-        console.log(this.selectedIndex);
-        console.log( this.rectExists(this.selectedIndex) );
+        /*console.log(this.selectedIndex);
+        console.log( this.rectExists(this.selectedIndex) );*/
         
-        if(this.rectExists(this.selectedIndex) ) this.rectBg(this.inactiveColor,this.selectedIndex);
         
+        
+        // přebarvení při odznačení                
+        inactiveCol = (typeof this.shapes[this.selectedIndex] != 'undefined') ? this.shapes[this.selectedIndex].attr().attributes.data.defaultColor : this.inactiveColor; // defaultní barva
+        if(this.rectExists(this.selectedIndex) ) this.rectBg(inactiveCol,this.selectedIndex);
+        
+        // hlavní obarvování, zapamatování co je označeno
         this.rectBg(this.selectedColor,rect);
         this.selectedIndex = rect.get('data').name;
       }
@@ -111,17 +116,32 @@ function Shaper()
       
     }
     
+    /**
+     * Přebarví pozadí rectanglu
+     * @param {string} barva na jakou barvu se bude barvit
+     * @param {string|object|boolean} objekt Objekt který se bude barvit, lze předat přímo objekt, nebo string index objektu. V případě zadání true se vezme zřetězený (poslední) objekt a tomu se přepíše defaultní barva, kterou si pamatuje.      
+     */        
     this.rectBg = function (color, name) {
     
+      // výběr objektu na který se bude barva aplikovat
+       target = null;
        if(typeof name == "undefined" ) {
-          this.last.attr({ rect: { fill: color } });
+          target = this.last;
        }
        else
         if(typeof name == 'object')
-          rect.attr({ rect: { fill: color } });
+          target = rect;
         else
-          this.shapes[name].attr({ rect: { fill: color } });
-    
+        if(typeof name == 'boolean') { // přetížení parametru, pokud je zadáno trů, propíše se zadaná barva jako defaultní
+           target = this.last;
+           target.attr().attributes.data.defaultColor=color;
+          }
+          else
+          target = this.shapes[name];
+          
+          // přebarvování
+          target.attr({ rect: { fill: color } });
+          
     }
     
     this.rectExists = function (name) {
@@ -155,10 +175,9 @@ function Shaper()
 
 var shape = new Shaper();
 shape.createRect('prvni', 'popisek boxu').move(150);
-shape.createRect('druhy');
-shape.createRect('treti').move(200,100).rectBg('black');
+shape.createRect('druhy').rectBg('orange',true);
+shape.createRect('treti').move(200,100).rectBg('black',true);
 
-shape.rectBg('orange','druhy');
 
 // TODO: kontrolovat jestli jsou parametry stejné a když jsou tak klonovat
 shape.link('prvni', 'druhy').link('prvni', 'druhy').link('prvni', 'druhy');
