@@ -22,6 +22,22 @@ var paperSmall = new joint.dia.Paper({
 paperSmall.scale(.5);
 paperSmall.$el.css('pointer-events', 'none');
 
+joint.shapes.basic.Rect = joint.shapes.basic.Generic.extend({
+
+    markup: '<g class="rotatable"><g class="scalable"><rect/></g><image/><text/></g>',
+    
+    defaults: joint.util.deepSupplement({
+    
+        type: 'basic.Rect',
+        attrs: {
+            'rect': {'stroke-width': 0, stroke: 'black', filter: { name: 'dropShadow', args: { dx: 1, dy: 1, blur: 1 }}, fill: 'white', stroke: 'black', 'follow-scale': true, width: 80, height: 40 },
+            'text': { 'font-size': 14, 'ref-x': 46, 'ref-y': 20 , ref: 'rect', 'y-alignment': 'middle', 'x-alignment': 'left', fill: 'black' },
+            'image': {'xlink:href': 'http://placehold.it/40x40' ,'ref-x': 8, 'ref-y': 5, ref: 'rect', width: 30, height: 30 }
+        }
+        
+    }, joint.shapes.basic.Generic.prototype.defaults)
+});
+
 
 function Shaper()
 {
@@ -29,10 +45,11 @@ function Shaper()
     this.links = [];
     
     this.defaultRect = {
-      position: { x: 100, y: 30 },
-      size: { width: 100, height: 30 },
+      position: { x: 0, y: 0 },
+      size: { width: 140, height: 40 },
       background: 'blue',
       text: 'muj box',
+      borderRadius: 11
     }    
     
     this.itemCount = 0;
@@ -45,7 +62,7 @@ function Shaper()
     this.inactiveColor = 'gray';
     
     this.createRect = function (name, textA) {
-        
+    
         this.itemCount++;
         
         // text do boxu
@@ -56,7 +73,18 @@ function Shaper()
         data: {name: name, defaultColor: this.defaultRect.background},
         position: this.defaultRect.position,
         size: this.defaultRect.size,
-        attrs: { rect: { fill: this.defaultRect.background, 'stroke-width': 2, stroke: 'black' }, text: { text: txt, fill: 'white' } }  });
+        attrs: { 
+          rect: { fill: this.defaultRect.background, rx: this.defaultRect.borderRadius, ry: this.defaultRect.borderRadius }, 
+          text: { text: txt },
+          }  
+          
+        });
+        
+        // pripichnu obrazek k rectanglu
+        // TODO , embed rozstřeluje 
+        
+        // ukladam obrazek do pole
+        //this.images[name+'_img'] = image;
         
         // ukladam box do promenne kvuli retezeni
         this.last = item;
@@ -66,6 +94,7 @@ function Shaper()
         
         // retezeni
         return this;
+        
     }
     
     this.getById = function (id) {
@@ -83,17 +112,23 @@ function Shaper()
         return this;
     }
     
+    /**
+     * Označí zadaný rectangle (podle name). Podle parametru je možno odznačovat, nebo označit poslední
+     * @param {string|object|boolean} nazev nazev rectanglu který se má označit, pokud je boolean odznačí se.
+     */ 
     this.selectRect = function (name) {
+      
+      if(typeof name == 'boolean')
+      {
+         inactiveCol = (typeof this.shapes[this.selectedIndex] != 'undefined') ? this.shapes[this.selectedIndex].attr().attributes.data.defaultColor : this.inactiveColor; // defaultní barva
+         if(this.rectExists(this.selectedIndex) ) this.rectBg(inactiveCol,this.selectedIndex);
+         return;
+      }
                                               
       rect = (this.rectExists(name)) ? this.shapes[name] : this.last;
     
       if(typeof rect != 'undefined' )
       {
-        /*console.log(this.selectedIndex);
-        console.log( this.rectExists(this.selectedIndex) );*/
-        
-        
-        
         // přebarvení při odznačení                
         inactiveCol = (typeof this.shapes[this.selectedIndex] != 'undefined') ? this.shapes[this.selectedIndex].attr().attributes.data.defaultColor : this.inactiveColor; // defaultní barva
         if(this.rectExists(this.selectedIndex) ) this.rectBg(inactiveCol,this.selectedIndex);
@@ -103,10 +138,11 @@ function Shaper()
         this.selectedIndex = rect.get('data').name;
       }
       else
-      console.log('Zadaný rectangle neexistuje');
+      { 
+        console.log('Rectangle neexistuje.');
+      }
       
       return this;
-    
     }
     
     this.move = function (x,y,opt) {
@@ -142,19 +178,22 @@ function Shaper()
           // přebarvování
           target.attr({ rect: { fill: color } });
           
+          return this;
+          
     }
     
     this.rectExists = function (name) {
         return this.shapes.hasOwnProperty(name);
     }
     
+    // zavést s jedním parametrem, což bude link mezi last a tím v argumentu
     this.link = function (source,target) {
       if( this.rectExists(source) && this.rectExists(target) ) { 
         this.links.push( new joint.dia.Link({
             source: { id: this.shapes[source].id },
             target: { id: this.shapes[target].id },
             attrs: { '.connection': { 'stroke-width': 1, stroke: '#000' } },
-            smooth: true,
+            //smooth: true,
         }) );
         
         return this;
@@ -169,18 +208,19 @@ function Shaper()
     this.render = function () {
        graph.addCells(this.shapes);
        graph.addCells(this.links);
+       
     }
     
 }
 
 var shape = new Shaper();
-shape.createRect('prvni', 'popisek boxu').move(150);
-shape.createRect('druhy').rectBg('orange',true);
-shape.createRect('treti').move(200,100).rectBg('black',true);
+shape.createRect('prvni', 'Alexej Karpov').move(150).rectBg('#07C3ED',true);
+shape.createRect('druhy').rectBg('orange',true).move(50,100);
+shape.createRect('treti').move(200,100).rectBg('green',true);
 
 
 // TODO: kontrolovat jestli jsou parametry stejné a když jsou tak klonovat
-shape.link('prvni', 'druhy').link('prvni', 'druhy').link('prvni', 'druhy');
+shape.link('prvni', 'druhy').link('treti', 'druhy').link('treti', 'prvni');
 
 
 var myAdjustVertices = _.partial(adjustVertices, graph);
@@ -189,10 +229,18 @@ paper.on('cell:pointerdown', function (el) {
   shape.getById( el.model.get('id') ).selectRect();
 });
 
-// adjust vertices when a cell is removed or its source/target was changed
-graph.on('add remove change:source change:target', myAdjustVertices);
-paper.on('cell:pointerup', myAdjustVertices);
+
+paper.on('blank:pointerdown', deselect);
+
+function deselect()
+{
+  shape.selectRect(false);
+}
+
+
+
+//image.model.css('pointer-events', 'none');
+
 
 // drawing
-
 shape.render();
