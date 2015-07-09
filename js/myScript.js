@@ -24,15 +24,15 @@ paperSmall.$el.css('pointer-events', 'none');
 
 joint.shapes.basic.Rect = joint.shapes.basic.Generic.extend({
 
-    markup: '<g class="rotatable"><g class="scalable"><rect/></g><image/><text/></g>',
+    markup: '<g class="rotatable"><g class="scalable"><rect/></g><image/><text class="title"/></g>',
     
     defaults: joint.util.deepSupplement({
     
         type: 'basic.Rect',
         attrs: {
             'rect': {'stroke-width': 0, stroke: 'black', filter: { name: 'dropShadow', args: { dx: 1, dy: 1, blur: 1 }}, fill: 'white', stroke: 'black', 'follow-scale': true, width: 80, height: 40 },
-            'text': { 'font-size': 14, 'ref-x': 46, 'ref-y': 20 , ref: 'rect', 'y-alignment': 'middle', 'x-alignment': 'left', fill: 'black' },
-            'image': {'xlink:href': 'http://placehold.it/40x40' ,'ref-x': 8, 'ref-y': 5, ref: 'rect', width: 30, height: 30 }
+            'text': { 'font-size': 14, 'ref-x': 46, 'ref-y': 20 , ref: 'rect','text-anchor': 'start', 'y-alignment': 'middle', 'x-alignment': 'left', fill: 'black' },
+            'image': {'xlink:href': 'http://placehold.it/40x40' ,'ref-x': 8, 'ref-y': 5, ref: 'rect' }
         }
         
     }, joint.shapes.basic.Generic.prototype.defaults)
@@ -49,7 +49,8 @@ function Shaper()
       size: { width: 140, height: 40 },
       background: 'blue',
       text: 'muj box',
-      borderRadius: 11
+      borderRadius: 11,
+      imageSize: {width: 30, height: 30}
     }    
     
     this.itemCount = 0;
@@ -66,26 +67,28 @@ function Shaper()
         this.itemCount++;
         
         // text do boxu
-        txt = (typeof textA == "undefined") ? this.defaultRect.text + ' ' + this.itemCount : textA; 
+        txt = (typeof textA == "undefined") ? this.defaultRect.text + ' ' + this.itemCount : textA;
+      
+        // změna velikosti podle obsahu
+        rSize = {width: this.defaultRect.size.width, height: this.defaultRect.size.height};
+        if (txt.length > 20)
+        {
+          rSize.width = ( txt.length * 7.5 ) + this.defaultRect.imageSize.width; 
+        }  
         
         // vytvarim box
         item = new joint.shapes.basic.Rect({
         data: {name: name, defaultColor: this.defaultRect.background},
         position: this.defaultRect.position,
-        size: this.defaultRect.size,
+        size: rSize,
         attrs: { 
           rect: { fill: this.defaultRect.background, rx: this.defaultRect.borderRadius, ry: this.defaultRect.borderRadius }, 
-          text: { text: txt },
+          text: { text: txt, 'id': name+"text" },
+          image: {width: this.defaultRect.imageSize.width, height: this.defaultRect.imageSize.height}
           }  
           
         });
-        
-        // pripichnu obrazek k rectanglu
-        // TODO , embed rozstřeluje 
-        
-        // ukladam obrazek do pole
-        //this.images[name+'_img'] = image;
-        
+
         // ukladam box do promenne kvuli retezeni
         this.last = item;
         
@@ -192,7 +195,10 @@ function Shaper()
         this.links.push( new joint.dia.Link({
             source: { id: this.shapes[source].id },
             target: { id: this.shapes[target].id },
-            attrs: { '.connection': { 'stroke-width': 1, stroke: '#000' } },
+            attrs: { 
+              '.connection': { 'stroke-width': 1, stroke: '#000' },  
+              '.marker-target': { d: 'M 10 0 L 0 5 L 10 10 z' }
+            },
             //smooth: true,
         }) );
         
@@ -214,7 +220,7 @@ function Shaper()
 }
 
 var shape = new Shaper();
-shape.createRect('prvni', 'Alexej Karpov').move(150).rectBg('#07C3ED',true);
+shape.createRect('prvni', 'Alexej Sergejevič Karpov').move(150).rectBg('#07C3ED',true);
 shape.createRect('druhy').rectBg('orange',true).move(50,100);
 shape.createRect('treti').move(200,100).rectBg('green',true);
 
