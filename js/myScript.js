@@ -24,20 +24,32 @@ paperSmall.$el.css('pointer-events', 'none');
 
 joint.shapes.basic.Rect = joint.shapes.basic.Generic.extend({
 
-    markup: '<g class="rotatable"><g class="scalable"><rect/></g><image/><text class="title"/></g>',
+    markup: '<g class="rotatable"><g class="scalable"><rect/><path/></g><image/><text class="title"/> </g>',
     
     defaults: joint.util.deepSupplement({
-    
+        inPorts: [],
         type: 'basic.Rect',
         attrs: {
             'rect': {'stroke-width': 0, stroke: 'black', filter: { name: 'dropShadow', args: { dx: 1, dy: 1, blur: 1 }}, fill: 'white', stroke: 'black', 'follow-scale': true, width: 80, height: 40 },
-            'text': { 'font-size': 14, 'ref-x': 46, 'ref-y': 20 , ref: 'rect','text-anchor': 'start', 'y-alignment': 'middle', 'x-alignment': 'left', fill: 'black' },
-            'image': {'xlink:href': 'http://placehold.it/40x40' ,'ref-x': 8, 'ref-y': 5, ref: 'rect' }
+            'text': {'pointer-events': 'none', 'font-size': 14, 'ref-x': 46, 'ref-y': 20 , ref: 'rect','text-anchor': 'start', 'y-alignment': 'middle', 'x-alignment': 'left', fill: 'black' },
+            'image': {'pointer-events': 'none','xlink:href': 'http://placehold.it/40x40' ,'ref-x': 8, 'ref-y': 5, ref: 'rect' },
+            'circle': {size: {width:20, height: 20}, fill: 'gray', stroke: 'black', 'stroke-width': 1 }
         }
         
     }, joint.shapes.basic.Generic.prototype.defaults)
 });
 
+paper.on('cell:pointerdown', function (el) {
+  shape.getById( el.model.get('id') ).selectRect();
+});
+
+
+paper.on('blank:pointerdown', deselect);
+
+function deselect()
+{
+  shape.selectRect(false);
+}
 
 function Shaper()
 {
@@ -54,6 +66,7 @@ function Shaper()
     }    
     
     this.itemCount = 0;
+    
     // chaining
     this.last = null;
     
@@ -71,9 +84,9 @@ function Shaper()
       
         // změna velikosti podle obsahu
         rSize = {width: this.defaultRect.size.width, height: this.defaultRect.size.height};
-        if (txt.length > 20)
+        if (txt.length > 13)
         {
-          rSize.width = ( txt.length * 7.5 ) + this.defaultRect.imageSize.width; 
+          rSize.width = ( txt.length * 7 ) + this.defaultRect.imageSize.width; 
         }  
         
         // vytvarim box
@@ -82,7 +95,7 @@ function Shaper()
         position: this.defaultRect.position,
         size: rSize,
         attrs: { 
-          rect: { fill: this.defaultRect.background, rx: this.defaultRect.borderRadius, ry: this.defaultRect.borderRadius }, 
+          rect: { fill: this.defaultRect.background, rx: this.defaultRect.borderRadius, ry: this.defaultRect.borderRadius, magnet: true }, 
           text: { text: txt, 'id': name+"text" },
           image: {width: this.defaultRect.imageSize.width, height: this.defaultRect.imageSize.height}
           }  
@@ -100,22 +113,29 @@ function Shaper()
         
     }
     
-    this.getById = function (id) {
-      //return this.last.id;
-        retName = '';
-        $.each(this.shapes, function (i, v) {
-          if(v.id==id)
-          {
-            retName = i;
-            return;
-          }
-        });
+        // zavést s jedním parametrem, což bude link mezi last a tím v argumentu
+    this.link = function (source,target) {
+      if( this.rectExists(source) && this.rectExists(target) ) { 
+        this.links.push( new joint.dia.Link({
+            source: { id: this.shapes[source].id },
+            target: { id: this.shapes[target].id },
+            attrs: { 
+              '.connection': { 'stroke-width': 1, stroke: '#000' },  
+              '.marker-target': { d: 'M 10 0 L 0 5 L 10 10 z' }
+            },
+            //smooth: true,
+        }) );
         
-        this.last = this.shapes[retName];
         return this;
+      }
+      else
+      {
+        console.log('Zdroj nebo cíl neexistuje. \n Zdroj:'+source+"\n Cíl:"+target);
+      }
+          
     }
     
-    /**
+     /**
      * Označí zadaný rectangle (podle name). Podle parametru je možno odznačovat, nebo označit poslední
      * @param {string|object|boolean} nazev nazev rectanglu který se má označit, pokud je boolean odznačí se.
      */ 
@@ -148,11 +168,19 @@ function Shaper()
       return this;
     }
     
-    this.move = function (x,y,opt) {
-    
-      this.last.translate(x,y,opt);
-      return this;
-      
+    this.getById = function (id) {
+      //return this.last.id;
+        retName = '';
+        $.each(this.shapes, function (i, v) {
+          if(v.id==id)
+          {
+            retName = i;
+            return;
+          }
+        });
+        
+        this.last = this.shapes[retName];
+        return this;
     }
     
     /**
@@ -180,35 +208,30 @@ function Shaper()
           
           // přebarvování
           target.attr({ rect: { fill: color } });
-          
           return this;
-          
     }
     
     this.rectExists = function (name) {
         return this.shapes.hasOwnProperty(name);
     }
     
-    // zavést s jedním parametrem, což bude link mezi last a tím v argumentu
-    this.link = function (source,target) {
-      if( this.rectExists(source) && this.rectExists(target) ) { 
-        this.links.push( new joint.dia.Link({
-            source: { id: this.shapes[source].id },
-            target: { id: this.shapes[target].id },
-            attrs: { 
-              '.connection': { 'stroke-width': 1, stroke: '#000' },  
-              '.marker-target': { d: 'M 10 0 L 0 5 L 10 10 z' }
-            },
-            //smooth: true,
-        }) );
-        
-        return this;
-      }
-      else
-      {
-        console.log('Zdroj nebo cíl neexistuje. \n Zdroj:'+source+"\n Cíl:"+target);
-      }
-          
+    this.move = function (x,y,opt) {
+      this.last.translate(x,y,opt);
+      return this;
+    }
+    
+    this.setImage = function (name, src) {
+      obj = this.shapes[name];
+      obj.attr({ image: { 'xlink:href': src } });
+    
+      return this;
+    }
+    
+    this.setText = function (name, text) {
+      obj = this.shapes[name];
+      obj.attr({ text: { 'text': text } });
+    
+      return this;
     }
     
     this.render = function () {
@@ -220,33 +243,17 @@ function Shaper()
 }
 
 var shape = new Shaper();
-shape.createRect('prvni', 'Alexej Sergejevič Karpov').move(150).rectBg('#07C3ED',true);
-shape.createRect('druhy').rectBg('orange',true).move(50,100);
-shape.createRect('treti').move(200,100).rectBg('green',true);
+shape.createRect('prvni', 'Člověk V. Grafü').move(150).rectBg('#07C3ED',true);
+shape.createRect('druhy', 'Dlouhatánské DŽDŽDŽ').rectBg('orange',true).move(50,100);
+shape.createRect('treti').move(367,76).rectBg('green',true);
 
-
-// TODO: kontrolovat jestli jsou parametry stejné a když jsou tak klonovat
 shape.link('prvni', 'druhy').link('treti', 'druhy').link('treti', 'prvni');
-
-
-var myAdjustVertices = _.partial(adjustVertices, graph);
-
-paper.on('cell:pointerdown', function (el) {
-  shape.getById( el.model.get('id') ).selectRect();
-});
-
-
-paper.on('blank:pointerdown', deselect);
-
-function deselect()
-{
-  shape.selectRect(false);
-}
-
-
-
-//image.model.css('pointer-events', 'none');
-
+shape
+  .setImage('prvni', 'http://brandonmathis.com/projects/fancy-avatars/demo/images/avatar_male_dark_on_clear_200x200.png')
+  .setText('prvni','Roman Karpov');
 
 // drawing
 shape.render();
+
+// ulozeni (snazsi nez jsem myslel)
+//console.log( JSON.stringify(graph) );
